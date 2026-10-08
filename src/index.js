@@ -12,7 +12,7 @@ const { getOrTranslateSubtitle } = require('./translator');
 const app = express();
 const PORT = process.env.PORT || 7000;
 
-// Cấu hình CORS mở hoàn toàn cho Stremio (Web, App, Smart TV)
+// Cấu hình CORS mở hoàn toàn cho Stremio & Nuvio Player (Web, Mobile, Smart TV)
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Headers', '*');
@@ -28,19 +28,13 @@ app.use(express.static(path.join(__dirname, '../public')));
 
 const MANIFEST = {
   id: 'community.animesub.vietnam.auto',
-  version: '1.0.1',
+  version: '1.0.2',
   name: 'Anime Vietsub Auto (All-in-One)',
-  description: 'Addon tự động cung cấp phụ đề Tiếng Việt cho 100% phim Anime và Series trên Stremio. Tích hợp nguồn AnimeSub+, AnimeTosho, OpenSubtitles và bộ Auto-Translate thông minh.',
+  description: 'Addon tự động cung cấp phụ đề Tiếng Việt cho 100% phim Anime và Series trên Stremio & Nuvio. Tích hợp AnimeSub+, AnimeTosho, OpenSubtitles và Auto-Translate.',
   logo: 'https://i.imgur.com/8Qe2BkW.png',
   background: 'https://i.imgur.com/vHkWq1a.jpeg',
-  resources: [
-    {
-      name: 'subtitles',
-      types: ['anime', 'series', 'movie'],
-      idPrefixes: ['tt', 'kitsu', 'mal', 'anilist']
-    }
-  ],
-  types: ['anime', 'series', 'movie'],
+  resources: ['subtitles'],
+  types: ['anime', 'series', 'movie', 'other'],
   idPrefixes: ['tt', 'kitsu', 'mal', 'anilist'],
   catalogs: [],
   behaviorHints: {
@@ -49,7 +43,7 @@ const MANIFEST = {
   }
 };
 
-// 1. Manifest Endpoint
+// 1. Manifest Endpoint (Hỗ trợ root, config prefix cho Nuvio và Stremio)
 app.get('/manifest.json', (req, res) => {
   res.json(MANIFEST);
 });
@@ -58,8 +52,8 @@ app.get('/:config/manifest.json', (req, res) => {
   res.json(MANIFEST);
 });
 
-// 2. Subtitles Endpoint
-app.get('/subtitles/:type/:id.json', async (req, res) => {
+// Xử lý logic Subtitle chung
+async function handleSubtitlesRequest(req, res) {
   const { type, id } = req.params;
   const host = req.get('host');
   const protocol = req.protocol === 'https' || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
@@ -83,24 +77,39 @@ app.get('/subtitles/:type/:id.json', async (req, res) => {
     // 1. Đưa các phụ đề Tiếng Việt có sẵn lên đầu
     if (animeSubResults.status === 'fulfilled') {
       for (const sub of animeSubResults.value) {
-        if (sub.lang === 'vie') {
-          finalSubtitles.push(sub);
+        if (sub.lang === 'vie' || sub.lang === 'vi') {
+          finalSubtitles.push({
+            id: sub.id,
+            url: sub.url,
+            lang: 'vie',
+            label: sub.label || '🇻🇳 AnimeSub+ [Tiếng Việt]'
+          });
         }
       }
     }
 
     if (openSubResults.status === 'fulfilled') {
       for (const sub of openSubResults.value) {
-        if (sub.lang === 'vie') {
-          finalSubtitles.push(sub);
+        if (sub.lang === 'vie' || sub.lang === 'vi') {
+          finalSubtitles.push({
+            id: sub.id,
+            url: sub.url,
+            lang: 'vie',
+            label: sub.label || '🇻🇳 OpenSubtitles [Tiếng Việt]'
+          });
         }
       }
     }
 
     if (animeToshoResults.status === 'fulfilled') {
       for (const sub of animeToshoResults.value) {
-        if (sub.lang === 'vie') {
-          finalSubtitles.push(sub);
+        if (sub.lang === 'vie' || sub.lang === 'vi') {
+          finalSubtitles.push({
+            id: sub.id,
+            url: sub.url,
+            lang: 'vie',
+            label: sub.label || `🇻🇳 AnimeTosho [${sub.filename || 'Tiếng Việt'}]`
+          });
         }
       }
     }
@@ -109,7 +118,7 @@ app.get('/subtitles/:type/:id.json', async (req, res) => {
     // Đảm bảo 100% phim gì cũng có Vietsub
     if (animeToshoResults.status === 'fulfilled') {
       for (const sub of animeToshoResults.value) {
-        if (sub.lang !== 'vie') {
+        if (sub.lang !== 'vie' && sub.lang !== 'vi') {
           const encodedUrl = Buffer.from(sub.url).toString('base64url');
           finalSubtitles.push({
             id: `auto_vi_${sub.id}`,
@@ -135,16 +144,22 @@ app.get('/subtitles/:type/:id.json', async (req, res) => {
       }
     }
 
-    // Giới hạn số lượng subtitle trả về tối đa 15 sub tốt nhất
+    // Giới hạn tối đa 20 sub chất lượng nhất
     res.json({
-      subtitles: finalSubtitles.slice(0, 15),
-      cacheMaxAge: 3600 // Cache 1 tiếng
+      subtitles: finalSubtitles.slice(0, 20),
+      cacheMaxAge: 3600
     });
   } catch (err) {
     console.error(`[Error] Subtitles handler error:`, err.message);
     res.json({ subtitles: [] });
   }
-});
+}
+
+// 2. Subtitles Endpoints (Hỗ trợ mọi biến thể route từ Nuvio và Stremio)
+app.get('/subtitles/:type/:id.json', handleSubtitlesRequest);
+app.get('/subtitles/:type/:id/:extra.json', handleSubtitlesRequest);
+app.get('/:config/subtitles/:type/:id.json', handleSubtitlesRequest);
+app.get('/:config/subtitles/:type/:id/:extra.json', handleSubtitlesRequest);
 
 // 3. Endpoint Stream phụ đề dịch tự động (.vtt và .srt)
 app.get('/sub/translate/:filename', async (req, res) => {
@@ -169,7 +184,7 @@ app.get('/sub/translate/:filename', async (req, res) => {
   }
 });
 
-// 4. Trang Configure giao diện Web Trắng-Xanh hiện đại
+// 4. Trang Configure giao diện Web Trắng-Xanh
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
 });
@@ -180,7 +195,7 @@ app.get('/configure', (req, res) => {
 
 if (require.main === module) {
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Stremio Vietsub Addon running at http://localhost:${PORT}`);
+    console.log(`🚀 Stremio & Nuvio Vietsub Addon running at http://localhost:${PORT}`);
     console.log(`📌 Manifest URL: http://localhost:${PORT}/manifest.json`);
   });
 }

@@ -84,6 +84,39 @@ async function resolveMetadata(type, id) {
         console.log(`[Metadata] Jikan error for ${result.malId}:`, e.message);
       }
     }
+    // Case 4: AniList ID (anilist:1234 hoặc anilist:1234:1)
+    else if (id.startsWith('anilist')) {
+      const anilistId = parts[1];
+      if (parts.length >= 3) {
+        result.episode = parseInt(parts[2], 10) || 1;
+      }
+      try {
+        const gqlQuery = `
+          query ($id: Int) {
+            Media (id: $id, type: ANIME) {
+              title {
+                romaji
+                english
+                native
+              }
+            }
+          }
+        `;
+        const aniRes = await axios.post('https://graphql.anilist.co', {
+          query: gqlQuery,
+          variables: { id: parseInt(anilistId, 10) }
+        }, { timeout: 4000 });
+
+        if (aniRes.data && aniRes.data.data && aniRes.data.data.Media) {
+          const t = aniRes.data.data.Media.title;
+          result.title = t.romaji || t.english || t.native;
+          result.romajiTitle = t.romaji || t.english;
+          result.englishTitle = t.english || t.romaji;
+        }
+      } catch (e) {
+        console.log(`[Metadata] AniList error for ${anilistId}:`, e.message);
+      }
+    }
 
     // Nếu có tiêu đề tiếng Nhật/Anh, query Kitsu để tìm cross-reference nếu thiếu
     if (result.title && !result.romajiTitle) {
