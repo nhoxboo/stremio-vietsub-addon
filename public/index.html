@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Anime Vietsub Auto · Stremio Addon</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #0284c7;
+      --primary-hover: #0369a1;
+      --primary-light: #e0f2fe;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --success: #10b981;
+      --shadow: 0 10px 25px -5px rgba(2, 132, 199, 0.08), 0 8px 10px -6px rgba(2, 132, 199, 0.04);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .container {
+      max-width: 640px;
+      width: 100%;
+      background: var(--card-bg);
+      border-radius: 24px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      padding: 40px;
+      text-align: center;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--primary-light);
+      color: var(--primary);
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--text-main);
+      margin-bottom: 12px;
+      letter-spacing: -0.5px;
+    }
+
+    p.subtitle {
+      color: var(--text-muted);
+      font-size: 15px;
+      line-height: 1.6;
+      margin-bottom: 32px;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      margin-bottom: 32px;
+      text-align: left;
+    }
+
+    .feature-card {
+      background: #f1f5f9;
+      padding: 16px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+    }
+
+    .feature-card h4 {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .feature-card p {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    .btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 16px 24px;
+      border-radius: 14px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      border: none;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #ffffff;
+      box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: #f8fafc;
+      color: var(--text-main);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      background: #f1f5f9;
+    }
+
+    .url-box {
+      margin-top: 24px;
+      padding: 12px 16px;
+      background: #f8fafc;
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+      font-size: 13px;
+      color: var(--text-muted);
+      word-break: break-all;
+    }
+
+    .toast {
+      display: none;
+      margin-top: 12px;
+      color: var(--success);
+      font-size: 13px;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="badge">
+      ⚡ Tự động 100% · Không lo thiếu Sub
+    </div>
+    
+    <h1>Anime Vietsub Auto</h1>
+    <p class="subtitle">
+      Addon phụ đề tiếng Việt thông minh cho Stremio. Tự động kết hợp các nguồn phụ đề hàng đầu và hệ thống Auto-Translate thời gian thực.
+    </p>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <h4>🇻🇳 Vietsub Chính Hãng</h4>
+        <p>Ưu tiên tìm kiếm từ AnimeSub+, Subsource, OpenSubtitles.</p>
+      </div>
+      <div class="feature-card">
+        <h4>⚡ Auto Dịch Tức Thì</h4>
+        <p>Tự động dịch Engsub từ AnimeTosho nếu chưa có bản dịch tiếng Việt.</p>
+      </div>
+      <div class="feature-card">
+        <h4>🎯 Tương Thích Mọi Nguồn</h4>
+        <p>Phát mượt với TorBox, Real-Debrid, Torrentio, AnimeStream.</p>
+      </div>
+      <div class="feature-card">
+        <h4>📱 Mọi Thiết Bị</h4>
+        <p>Hỗ trợ đầy đủ PC, Android TV, Google TV, Web, iOS.</p>
+      </div>
+    </div>
+
+    <div class="btn-group">
+      <a id="installBtn" href="#" class="btn btn-primary">
+        🚀 Cài Đặt Vào Stremio (1-Click)
+      </a>
+      <button id="copyBtn" class="btn btn-secondary" onclick="copyManifest()">
+        📋 Sao chép Link Manifest
+      </button>
+    </div>
+
+    <div id="toast" class="toast">✓ Đã sao chép link Manifest vào bộ nhớ tạm!</div>
+
+    <div class="url-box" id="manifestUrl">
+      Đang tải URL...
+    </div>
+  </div>
+
+  <script>
+    const currentOrigin = window.location.origin;
+    const manifestHttp = `${currentOrigin}/manifest.json`;
+    const manifestStremio = `stremio://${window.location.host}/manifest.json`;
+
+    document.getElementById('installBtn').href = manifestStremio;
+    document.getElementById('manifestUrl').innerText = manifestHttp;
+
+    function copyManifest() {
+      navigator.clipboard.writeText(manifestHttp).then(() => {
+        const toast = document.getElementById('toast');
+        toast.style.display = 'block';
+        setTimeout(() => { toast.style.display = 'none'; }, 2500);
+      });
+    }
+  </script>
+</body>
+</html>
