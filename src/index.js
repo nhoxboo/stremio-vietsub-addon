@@ -12,13 +12,23 @@ const { getOrTranslateSubtitle } = require('./translator');
 const app = express();
 const PORT = process.env.PORT || 7000;
 
-app.use(cors());
+// Cấu hình CORS mở hoàn toàn cho Stremio (Web, App, Smart TV)
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Headers', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
+
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
 
 const MANIFEST = {
   id: 'community.animesub.vietnam.auto',
-  version: '1.0.0',
+  version: '1.0.1',
   name: 'Anime Vietsub Auto (All-in-One)',
   description: 'Addon tự động cung cấp phụ đề Tiếng Việt cho 100% phim Anime và Series trên Stremio. Tích hợp nguồn AnimeSub+, AnimeTosho, OpenSubtitles và bộ Auto-Translate thông minh.',
   logo: 'https://i.imgur.com/8Qe2BkW.png',
@@ -103,7 +113,7 @@ app.get('/subtitles/:type/:id.json', async (req, res) => {
           const encodedUrl = Buffer.from(sub.url).toString('base64url');
           finalSubtitles.push({
             id: `auto_vi_${sub.id}`,
-            url: `${baseUrl}/sub/translate/${encodedUrl}.srt`,
+            url: `${baseUrl}/sub/translate/${encodedUrl}.vtt`,
             lang: 'vie',
             label: `⚡ [Auto Vietsub] ${sub.filename || sub.sourceTitle || 'AnimeTosho'}`
           });
@@ -117,7 +127,7 @@ app.get('/subtitles/:type/:id.json', async (req, res) => {
           const encodedUrl = Buffer.from(sub.url).toString('base64url');
           finalSubtitles.push({
             id: `auto_vi_${sub.id}`,
-            url: `${baseUrl}/sub/translate/${encodedUrl}.srt`,
+            url: `${baseUrl}/sub/translate/${encodedUrl}.vtt`,
             lang: 'vie',
             label: `⚡ [Auto Vietsub] OpenSubtitles (Dịch tự động)`
           });
@@ -136,19 +146,23 @@ app.get('/subtitles/:type/:id.json', async (req, res) => {
   }
 });
 
-// 3. Endpoint Stream phụ đề dịch tự động
-app.get('/sub/translate/:encodedUrl.srt', async (req, res) => {
-  const { encodedUrl } = req.params;
+// 3. Endpoint Stream phụ đề dịch tự động (.vtt và .srt)
+app.get('/sub/translate/:filename', async (req, res) => {
+  const { filename } = req.params;
+  const isVtt = filename.endsWith('.vtt');
+  const encodedUrl = filename.replace(/\.(vtt|srt)$/, '');
+
   try {
     const targetUrl = Buffer.from(encodedUrl, 'base64url').toString('utf-8');
     const subId = `sub_${encodedUrl.substring(0, 16)}`;
+    const format = isVtt ? 'WebVTT' : 'SRT';
     
-    console.log(`[Translate Sub] Downloading & translating from: ${targetUrl}`);
-    const srtContent = await getOrTranslateSubtitle(targetUrl, subId);
+    console.log(`[Translate Sub] Downloading & translating (${format}) from: ${targetUrl}`);
+    const content = await getOrTranslateSubtitle(targetUrl, subId, format);
 
-    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-    res.setHeader('Content-Disposition', 'inline; filename="sub_vietsub.srt"');
-    res.send(srtContent);
+    res.setHeader('Content-Type', isVtt ? 'text/vtt; charset=utf-8' : 'text/plain; charset=utf-8');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.send(content);
   } catch (err) {
     console.error(`[Translate Sub Error]:`, err.message);
     res.status(500).send('Error generating translated subtitle');

@@ -71,10 +71,11 @@ async function translateCues(cues) {
   }
 }
 
-// Tải và dịch toàn bộ file phụ đề
-async function getOrTranslateSubtitle(sourceUrl, subId) {
-  if (translationCache.has(subId)) {
-    return translationCache.get(subId);
+// Tải và dịch toàn bộ file phụ đề (hỗ trợ format 'WebVTT' hoặc 'SRT')
+async function getOrTranslateSubtitle(sourceUrl, subId, format = 'WebVTT') {
+  const cacheKey = `${subId}_${format}`;
+  if (translationCache.has(cacheKey)) {
+    return translationCache.get(cacheKey);
   }
 
   try {
@@ -129,9 +130,9 @@ async function getOrTranslateSubtitle(sourceUrl, subId) {
 
     await translateCues(cues);
 
-    const translatedSrt = stringifySync(nodes, { format: 'SRT' });
-    translationCache.set(subId, translatedSrt);
-    return translatedSrt;
+    const output = stringifySync(nodes, { format: format === 'SRT' ? 'SRT' : 'WebVTT' });
+    translationCache.set(cacheKey, output);
+    return output;
   } catch (err) {
     console.error(`[Translator] Error translating sub ${subId}:`, err.message);
     throw err;
