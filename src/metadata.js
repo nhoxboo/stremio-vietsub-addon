@@ -3,6 +3,30 @@ const axios = require('axios');
 // Cache metadata để tránh request lặp lại
 const metaCache = new Map();
 
+// Hàm tìm IMDb ID từ tên phim trên Cinemeta
+async function findImdbIdByTitle(title, type = 'series') {
+  if (!title) return null;
+  const cleanTitle = title.replace(/[^\w\s]/gi, ' ').replace(/\s+/g, ' ').trim();
+  const searchTypes = type === 'movie' ? ['movie', 'series'] : ['series', 'movie'];
+
+  for (const st of searchTypes) {
+    try {
+      const url = `https://v3-cinemeta.strem.io/catalog/${st}/top/search=${encodeURIComponent(cleanTitle)}.json`;
+      const res = await axios.get(url, { timeout: 3500 });
+      if (res.data && Array.isArray(res.data.metas) && res.data.metas.length > 0) {
+        for (const meta of res.data.metas) {
+          if (meta.id && meta.id.startsWith('tt')) {
+            return { imdbId: meta.id, type: st };
+          }
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+  return null;
+}
+
 async function resolveMetadata(type, id) {
   const cacheKey = `${type}:${id}`;
   if (metaCache.has(cacheKey)) {
@@ -18,7 +42,7 @@ async function resolveMetadata(type, id) {
     englishTitle: '',
     season: 1,
     episode: 1,
-    type: type // 'series', 'movie', 'anime'
+    type: type === 'movie' ? 'movie' : 'series'
   };
 
   try {
@@ -34,13 +58,13 @@ async function resolveMetadata(type, id) {
         result.episode = parseInt(parts[1], 10) || 1;
       }
 
-      // Fetch title from Cinemeta
       try {
         const cinemetaType = type === 'movie' ? 'movie' : 'series';
         const metaRes = await axios.get(`https://v3-cinemeta.strem.io/meta/${cinemetaType}/${result.imdbId}.json`, { timeout: 4000 });
         if (metaRes.data && metaRes.data.meta) {
           result.title = metaRes.data.meta.name;
           result.englishTitle = metaRes.data.meta.name;
+          result.romajiTitle = metaRes.data.meta.name;
         }
       } catch (e) {
         console.log(`[Metadata] Cinemeta error for ${result.imdbId}:`, e.message);
@@ -60,9 +84,17 @@ async function resolveMetadata(type, id) {
           result.title = attr.canonicalTitle || attr.titles.en_jp || attr.titles.en;
           result.romajiTitle = attr.titles.en_jp || attr.canonicalTitle;
           result.englishTitle = attr.titles.en || attr.canonicalTitle;
+          if (attr.subtype === 'movie') result.type = 'movie';
         }
       } catch (e) {
         console.log(`[Metadata] Kitsu error for ${result.kitsuId}:`, e.message);
+      }
+
+      const searchTitle = result.englishTitle || result.romajiTitle || result.title;
+      const imdbMatch = await findImdbIdByTitle(searchTitle, result.type);
+      if (imdbMatch) {
+        result.imdbId = imdbMatch.imdbId;
+        result.type = imdbMatch.type;
       }
     }
     // Case 3: MAL ID (mal:1234 hoặc mal:1234:1)
@@ -79,9 +111,17 @@ async function resolveMetadata(type, id) {
           result.title = data.title;
           result.romajiTitle = data.title;
           result.englishTitle = data.title_english || data.title;
+          if (data.type === 'Movie') result.type = 'movie';
         }
       } catch (e) {
         console.log(`[Metadata] Jikan error for ${result.malId}:`, e.message);
+      }
+
+      const searchTitle = result.englishTitle || result.romajiTitle || result.title;
+      const imdbMatch = await findImdbIdByTitle(searchTitle, result.type);
+      if (imdbMatch) {
+        result.imdbId = imdbMatch.imdbId;
+        result.type = imdbMatch.type;
       }
     }
     // Case 4: AniList ID (anilist:1234 hoặc anilist:1234:1)
@@ -94,6 +134,7 @@ async function resolveMetadata(type, id) {
         const gqlQuery = `
           query ($id: Int) {
             Media (id: $id, type: ANIME) {
+              format
               title {
                 romaji
                 english
@@ -108,17 +149,25 @@ async function resolveMetadata(type, id) {
         }, { timeout: 4000 });
 
         if (aniRes.data && aniRes.data.data && aniRes.data.data.Media) {
-          const t = aniRes.data.data.Media.title;
+          const media = aniRes.data.data.Media;
+          const t = media.title;
           result.title = t.romaji || t.english || t.native;
           result.romajiTitle = t.romaji || t.english;
           result.englishTitle = t.english || t.romaji;
+          if (media.format === 'MOVIE') result.type = 'movie';
         }
       } catch (e) {
         console.log(`[Metadata] AniList error for ${anilistId}:`, e.message);
       }
+
+      const searchTitle = result.englishTitle || result.romajiTitle || result.title;
+      const imdbMatch = await findImdbIdByTitle(searchTitle, result.type);
+      if (imdbMatch) {
+        result.imdbId = imdbMatch.imdbId;
+        result.type = imdbMatch.type;
+      }
     }
 
-    // Nếu có tiêu đề tiếng Nhật/Anh, query Kitsu để tìm cross-reference nếu thiếu
     if (result.title && !result.romajiTitle) {
       result.romajiTitle = result.title;
     }
